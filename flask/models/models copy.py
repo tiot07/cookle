@@ -11,15 +11,18 @@ class User(Base):
     email = Column(String, unique=True)
     name = Column(String, unique=True)
     password = Column(String)
+    total_badges = Column(Integer)
+    total_points = Column(Integer)
 
-    def __init__(self, email=None, name=None, password=None):
+    def __init__(self, email=None, name=None, password=None, total_badges=None, total_points=None):
         self.email = email
         self.name = name
         self.password = password
-
+        self.total_badges = total_badges
+        self.total_points = total_points
 
     def __repr__(self):
-        return "User<{}, {}, {}, {}, {}, {}>".format(self.user_id, self.email, self.name, self.password)
+        return "User<{}, {}, {}, {}, {}, {}>".format(self.user_id, self.email, self.name, self.password, self.total_badges, self.total_points)
 
 
 # masui
@@ -55,26 +58,51 @@ class Cook_history(Base):
 
 
 # kajiura
+class Point_user(Base):
+    __tablename__ = 'point_users'
+    point_user_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    point = Column(Integer)
+    get_date = Column(String)
+
+    def __init__(self, user_id=None, point=None, get_date=None):
+        self.user_id=user_id
+        self.point=point
+        self.get_date=get_date
+
+    def __repr__(self):
+        return "Point_user<{}, {}, {}, {}>".format(self.point_user_id, self.user_id, self.point, self.get_date)
+
+
+# kajiura
 class Post(Base):
     __tablename__ = 'posts'
     post_id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
-    point = Column(Integer)
+    meal_id1 = Column(Integer)
+    meal_id2 = Column(Integer)
+    meal_id3 = Column(Integer)
+    meal_id4 = Column(Integer)
+    meal_id5 = Column(Integer)
     image_url = Column(String)
     recipe_url = Column(String)
     post_comment = Column(String)
     create_at = Column(String)
 
-    def __init__(self, user_id=None, point=None, image_url=None, recipe_url=None, post_comment=None, create_at=None):
+    def __init__(self, user_id=None, meal_id1=None, meal_id2=None, meal_id3=None, meal_id4=None, meal_id5=None, image_url=None, recipe_url=None, post_comment=None, create_at=None):
         self.user_id = user_id
-        self.point = point
+        self.meal_id1 = meal_id1
+        self.meal_id2 = meal_id2
+        self.meal_id3 = meal_id3
+        self.meal_id4 = meal_id4
+        self.meal_id5 = meal_id5
         self.image_url = image_url
         self.recipe_url = recipe_url
         self.post_comment = post_comment
         self.create_at = create_at
 
     def __repr__(self):
-        return "Post<{}, {}, {}, {}, {}, {}, {}>".format(self.post_id, self.user_id, self.point, self.image_url, self.recipe_url, self.post_comment, self.create_at)
+        return "Post<{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}>".format(self.post_id, self.user_id, self.meal_id1, self.meal_id2, self.meal_id3, self.meal_id4, self.meal_id5, self.image_url, self.recipe_url, self.post_comment, self.create_at)
 
 
 # kajiura

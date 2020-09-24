@@ -7,7 +7,7 @@ from flask_jwt_extended import (
     get_jwt_identity
 )
 import boto3  #AWS SDK for Python
-from models.models import User, Meal_content, Cook_history, Post, User_relation, Badges
+from models.models import User, Meal_content, Cook_history, Point_user, Post, User_relation, Badges
 from models.database import db_session
 import datetime
 from urllib.request import urlopen
@@ -195,7 +195,7 @@ def mypage_json():
         posts = []
         post_raw = Post.query.filter(Post.user_id==user_id).all()
         for p in post_raw:
-            posts.append({'post_id':p.post_id,'create_at':p.post_comment,'meal_url':p.recipe_url,'image_url':p.image_url})
+            posts.append({'post_id':p.post_id,'meal_url':p.recipe_url,'image_url':p.image_url})
         posts.sort(key=lambda x: x['post_id'], reverse=True)  
         flwer = []
         flwer_raw = User_relation.query.filter(User_relation.followed_id==user_id).all()
@@ -207,12 +207,8 @@ def mypage_json():
         for f in flwee_raw:
             flwee.append(f.followed_id)
         n_flwee = len(flwee)
-        #TODO total_badgesをbadgesテーブルから見つけてくる
-        #n_badge = User.query.filter(User.user_id==user_id).first().total_badges
-        n_badge=0
-        #TODO total_pointsをpostテーブルからとってくる
-        #n_point = User.query.filter(User.user_id==user_id).first().total_points
-        n_point=0
+        n_badge = User.query.filter(User.user_id==user_id).first().total_badges
+        n_point = User.query.filter(User.user_id==user_id).first().total_points
 
         return jsonify(name=name, post_id=posts, followers=n_flwer, followees=n_flwee, total_badge=n_badge, total_point=n_point)
     except Exception as e:
@@ -245,12 +241,8 @@ def others_mypage_json(user_id=None):
         for f in flwee_raw:
             flwee.append(f.followed_id)
         n_flwee = len(flwee)
-        #TODO total_badgesをbadgesテーブルから見つけてくる
-        #n_badge = User.query.filter(User.user_id==user_id).first().total_badges
-        n_badge=0
-        #TODO total_pointsをpostテーブルからとってくる
-        #n_point = User.query.filter(User.user_id==user_id).first().total_points
-        n_point=0
+        n_badge = User.query.filter(User.user_id==user_id).first().total_badges
+        n_point = User.query.filter(User.user_id==user_id).first().total_points
 
         return jsonify(name=name,post_id=posts, follwers=n_flwer, followees=n_flwee, total_badge=n_badge, total_point=n_point)
     except Exception as e:
@@ -369,30 +361,28 @@ def upload():
                 meal_point.append(Meal_content.query.filter(Meal_content.name==meal).all()[0].point)
             meal_id.append(Meal_content.query.filter(Meal_content.name==meal).all()[0].meal_id)
         meal_num=len(meal_id)
-        #TODO バグとり
         for i in range(5-meal_num):
             meal_id.append(None)
         #Point_userに送る為にpointの合計を計算する
         total_points=sum(meal_point)
         #postにuser_id,meal_id{1,2,3,4,5},image_url,post_comment,recipe_url追記
         print(meal_id)
-        add_data(Post(user_id, total_points , image_url , recipe_url , post_comment , created_at))
+        add_data(Post(user_id, meal_id[0] , meal_id[1] , meal_id[2] , meal_id[3] , meal_id[4] , image_url , recipe_url , post_comment , created_at))
         # postidを取ってくる
         post_id=Meal_content.query.all()[-1].meal_id
         #cook_historyにmeal_id,user_id,post_id追記
         for i in range(meal_num):
             add_data(Cook_history(meal_id[i],user_id,post_id))
         # userテーブルから現在のポイントを取ってくる+ポイントの上書き
-        #user = User.query.filter(User.user_id == user_id).first()
-        #user.total_points += total_points
+        user = User.query.filter(User.user_id == user_id).first()
+        user.total_points += total_points
         db_session.commit()
 
         #point_userにuser_id,point,get_date追記
-        #add_data(Point_user(user_id,total_points,get_date))
+        add_data(Point_user(user_id,total_points,get_date))
 
         ### masui
         ### push users' graph
-        #TODO point_userテーブルが無くなった分を編集
         def push_graph():
             point_list = Point_user.query.filter(Point_user.user_id==user_id).all()
             graph_dic = {}
@@ -484,7 +474,7 @@ def upload():
                 response = s3.Bucket('rakuten.intern2020').put_object(Key="graph/{}".format(user_id), Body=f,ContentType="text/html")
                 #URL生成
 
-        #push_graph()
+        push_graph()
 
         print("バッチ処理開始")
         # return jsonify(status=0, message=''), 200
@@ -494,8 +484,8 @@ def upload():
         # データベース内容変更　judge_budges関数内で使用
         def change_badges(user,meal,level):
             # Userテーブルのtotal_badgesを変更
-            #user_table = User.query.filter(User.user_id==user).first()
-            #user_table.total_badges += 1
+            user_table = User.query.filter(User.user_id==user).first()
+            user_table.total_badges += 1
             # Badgesテーブルにカラム追加
             badges_table = Badges.query.filter(Badges.user_id==user,Badges.meal_id==meal).all()
             if len(badges_table) == 0:
@@ -524,7 +514,7 @@ def upload():
                 change_badges(user_id,meal_id,2)
                 return {'meal_name':meal_name,'badge_level':2}
             # badge_level 3　バッチ10個(仮)
-            elif meal_count == 10:
+            elif meal_count >= 10:
                 change_badges(user_id,meal_id,3)
                 return {'meal_name':meal_name,'badge_level':3}
             else:
@@ -613,8 +603,7 @@ def search_user():
         # user_search = "%{}%".format(user_name)
         # total_user_id = User.query.filter(User.name.like(user_search))
         # total_user_id = User.query.filter(User.name.like('%user_name%'))
-        #TODO total_badges,total_pointsを計算
-        return jsonify(name=user.name,user_id=user.user_id,total_badges=0,total_points=0)
+        return jsonify(name=user.name,user_id=user.user_id,total_badges=user.total_badges,total_points=user.total_points)
     except Exception as e:
         abort(404, {'code': 'Not found', 'message': str(e)})
 
@@ -673,16 +662,16 @@ def total_badge_ranking_json():
     try:
         # とりあえず全ユーザー送る
         # total_badgesの降順でソート
-        users = db_session.query(User.user_id, User.name).all()
-        #users.sort(key=lambda x: x[2], reverse=True)
+        users = db_session.query(User.user_id, User.name, User.total_badges, User.total_points).all()
+        users.sort(key=lambda x: x[2], reverse=True)
         user_list = []
         for user in users:
-            user_id, name = user
+            user_id, name, total_badges, total_points = user
             user_dic = {
                 'user_id': user_id,
                 'name': name,
-                'badge': 0,
-                'point': 0,
+                'badge': total_badges,
+                'point': total_points,
             }
             #  [{user_id, name, badge, point}, {user_id, name, badge, point}, {…}]のようにレスポンス
             user_list.append(user_dic)
@@ -699,16 +688,16 @@ def total_point_ranking_json():
     try:
         # とりあえず全ユーザー送る
         # total_pointsの降順でソート
-        users = db_session.query(User.user_id, User.name).all()
-        #users.sort(key=lambda x: x[3], reverse=True)
+        users = db_session.query(User.user_id, User.name, User.total_badges, User.total_points).all()
+        users.sort(key=lambda x: x[3], reverse=True)
         user_list = []
         for user in users:
-            user_id, name = user
+            user_id, name, total_badges, total_points = user
             user_dic = {
                 'user_id': user_id,
                 'name': name,
-                'badge': 0,
-                'point': 0,
+                'badge': total_badges,
+                'point': total_points,
             }
             #  [{user_id, name, badge, point}, {user_id, name, badge, point}, {…}]のようにレスポンス
             user_list.append(user_dic)
@@ -734,17 +723,17 @@ def followee_total_badge_ranking_json():
         flwee = db_session.query(User).filter(User.user_id.in_(flwee)).all()
         flwee_users = []
         for user in flwee:
-            flwee_users.append((user.user_id, user.name, 0, 0))
-        #flwee_users.sort(key=lambda x: x[2], reverse=True)
+            flwee_users.append((user.user_id, user.name, user.total_badges, user.total_points))
+        flwee_users.sort(key=lambda x: x[2], reverse=True)
 
         user_list = []
         for user in flwee_users:
-            user_id, name,badge,point= user
+            user_id, name, total_badges, total_points = user
             user_dic = {
                 'user_id': user_id,
                 'name': name,
-                'badge': 0,
-                'point': 0,
+                'badge': total_badges,
+                'point': total_points,
             }
             #  [{user_id, name, badge, point}, {user_id, name, badge, point}, {…}]のようにレスポンス
             user_list.append(user_dic)
@@ -770,7 +759,7 @@ def followee_total_point_ranking_json():
         flwee = db_session.query(User).filter(User.user_id.in_(flwee)).all()
         flwee_users = []
         for user in flwee:
-            flwee_users.append((user.user_id, user.name, 0,0))
+            flwee_users.append((user.user_id, user.name, user.total_badges, user.total_points))
         flwee_users.sort(key=lambda x: x[3], reverse=True)
 
         user_list = []
@@ -779,8 +768,8 @@ def followee_total_point_ranking_json():
             user_dic = {
                 'user_id': user_id,
                 'name': name,
-                'badge': 0,
-                'point': 0,
+                'badge': total_badges,
+                'point': total_points,
             }
             #  [{user_id, name, badge, point}, {user_id, name, badge, point}, {…}]のようにレスポンス
             user_list.append(user_dic)
@@ -798,27 +787,27 @@ def monthly_point_ranking_json():
     try:
         # とりあえず全ユーザー送る
         # monthly_pointsの降順でソート
-        users = db_session.query(User.user_id, User.name).all()
+        users = db_session.query(User.user_id, User.name, User.total_badges).all()
         user_list = []
         for user in users:
-            user_id, name = user
-            # user_point_history = Point_user.query.filter(Point_user.user_id==user_id).all()
+            user_id, name, total_badges = user
+            user_point_history = Point_user.query.filter(Point_user.user_id==user_id).all()
             points = 0
-            # for data in user_point_history:
-            #     if(int(data.get_date[5:7]) == datetime.datetime.now().month):
-            #         points += data.point
-            user_list.append((user_id, name, 0, points))
+            for data in user_point_history:
+                if(int(data.get_date[5:7]) == datetime.datetime.now().month):
+                    points += data.point
+            user_list.append((user_id, name, total_badges, points))
 
-        #user_list.sort(key=lambda x: x[3], reverse=True)
+        user_list.sort(key=lambda x: x[3], reverse=True)
 
         result_list = []
         for user in user_list:
-            user_id, name ,badge,point= user
+            user_id, name, total_badges, monthly_points = user
             user_dic = {
                 'user_id': user_id,
                 'name': name,
-                'badge': 0,
-                'point': 0,
+                'badge': total_badges,
+                'point': monthly_points,
             }
             #  [{user_id, name, badge, point}, {user_id, name, badge, point}, {…}]のようにレスポンス
             result_list.append(user_dic)
@@ -846,17 +835,17 @@ def followee_monthly_point_ranking_json():
         flwee = db_session.query(User).filter(User.user_id.in_(flwee)).all()
         flwee_users = []
         for user in flwee:
-            flwee_users.append((user.user_id, user.name, 0))
+            flwee_users.append((user.user_id, user.name, user.total_badges))
 
         user_list = []
         for user in flwee_users:
             user_id, name, total_badges = user
-            # user_point_history = Point_user.query.filter(Point_user.user_id==user_id).all()
+            user_point_history = Point_user.query.filter(Point_user.user_id==user_id).all()
             points = 0
-            # for data in user_point_history:
-            #     if(int(data.get_date[5:7]) == datetime.datetime.now().month):
-            #         points += data.point
-            user_list.append((user_id, name, 0, points))
+            for data in user_point_history:
+                if(int(data.get_date[5:7]) == datetime.datetime.now().month):
+                    points += data.point
+            user_list.append((user_id, name, total_badges, points))
 
         user_list.sort(key=lambda x: x[3], reverse=True)
 

@@ -27,8 +27,8 @@ const useStyles = makeStyles({
     testAlign: 'center'
   },
   image: {
-    width: "170px",
-    height: "170px",
+    width: "200px",
+    height: "200px",
     objectFit: "cover",
     borderRadius: 10
   }
@@ -45,6 +45,7 @@ const PhotoDisplay: React.FC<Props> = (props) => {
         </Link>
 
         {item.name && item.create_at ? <GridListTileBar title={item.name} subtitle={item.create_at} /> : ""}
+        {!item.name && item.create_at ? <GridListTileBar style={{ fontSize: 10,textAlign: 'center' }} subtitle={item.create_at} /> : ""}
       </GridListTile>
     );
   })

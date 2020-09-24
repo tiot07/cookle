@@ -26,7 +26,7 @@ const Home: React.FC = () => {
         </div>
         <div className="home2">
           <h4><i className="far fa-lightbulb"></i><span>その悩み、Cookleで解決しよう！</span></h4>
-          <p><img src={Panda} alt="image" /></p>
+          <p><img src="https://s3-ap-northeast-1.amazonaws.com/rakuten.intern2020/image/panda.png" alt="image" /></p>
           <Link style={{ color: 'white' }} onClick={() => history.push('/login')} className="btn"><span>サービスを使ってみる</span></Link>
         </div>
       </div>

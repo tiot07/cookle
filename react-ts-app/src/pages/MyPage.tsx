@@ -20,6 +20,7 @@ import UserInfo from '../components/UserInfo'
 interface Post {
   post_id: number;
   image_url: string;
+  create_at: string;
 }
 
 interface State {
@@ -68,10 +69,10 @@ const Home: React.FC = () => {
         <UserInfo followee={userInfo.followees} followers={userInfo.followers} totalBadge={userInfo.total_badge} totalPoint={userInfo.total_point} />
       )
         :
-        <p style={{ textAlign: 'center' }}><MDSpinner size={56} /></p>}
+        <p style={{ fontSize: 10,textAlign: 'center' }}><MDSpinner size={56} /></p>}
       {userInfo ?
         <PhotoDisplay post_id={userInfo.post_id} />
-        : null
+        : <p style={{ fontSize: 10,textAlign: 'center' }}><MDSpinner size={56} /></p>
       }
       <hr />
       <p style={{ textAlign: 'center' }}>
